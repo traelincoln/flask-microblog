@@ -6,18 +6,27 @@ from app.models import User
 import sqlalchemy as sa
 from urllib.parse import urlsplit
 from datetime import datetime, timezone
+# Import PostForm and Post model
+from app.forms import PostForm
+from app.models import Post
 
-
-@app.route("/")
-@app.route("/index")
+# Home page found at '/' or '/index' accepts both get and post requests 
+@app.route("/", methods=['GET', 'POST'])
+@app.route("/index", methods=['GET', 'POST'])
 @login_required
 def index():
-    user = {"username": "Miguel"}
-    posts = [
-        {"author": {"username": "John"}, "body": "Its a beautiful day in Portland"},
-        {"author": {"username": "Tapiwa"}, "body": "Pakaipa, Harare iripukisa."},
-    ]
-    return render_template("index.html", title="Home", user=user, posts=posts)
+    form = PostForm()
+    # Validate post request using the PostForm and if validates add post to database
+    if form.validate_on_submit(): 
+        post = Post(body=form.post.data, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash('Your Post is live!')
+        return redirect(url_for('index'))
+
+    posts = db.session.scalars(current_user.following_posts()).all() # Get posts from current user and users they follow
+
+    return render_template("index.html", title="Home", user=user, posts=posts, form=form)
 
 
 @app.route("/login", methods=["GET", "POST"])
